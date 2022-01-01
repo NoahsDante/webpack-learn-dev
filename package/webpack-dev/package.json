@@ -15,8 +15,9 @@
   "devDependencies": {
     "@babel/generator": "^7.16.5",
     "@babel/traverse": "^7.16.5",
-    "@babel/types": "^7.16.0",
+    "@babel/types": "^7.16.7",
     "babylon": "^6.18.0",
-    "ejs": "^3.1.6"
+    "ejs": "^3.1.6",
+    "tapable": "^2.2.1"
   }
 }

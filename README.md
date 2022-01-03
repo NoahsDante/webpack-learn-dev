@@ -2,8 +2,9 @@
 手写webpack
 
 
-编译产物分析
+## 编译产物分析
 
+```javascript
  (() => {
    // 模块依赖
  var __webpack_modules__ = ({
@@ -48,26 +49,41 @@ module.exports = 'a' + b;`);
    // 执行入口文件代码
  var __webpack_exports__ = __webpack_require__("./src/index.js");
  })()
+```
+
 以上代码是通过精简过的，可以看到以下工具函数
-● __webpack_modules__:是一个对象，它的值是所有模块的代码，key值对应是模块文件路径
-● __webpack_module_cache__: 缓存exports的值
-● __webpack_require__:加载模块代码，根据模块文件路径
-● __webpack_exports__:模块对外暴露方法
+
+- __webpack_modules__:是一个对象，它的值是所有模块的代码，key值对应是模块文件路径
+- __webpack_module_cache__: 缓存exports的值
+
+- __webpack_require__:加载模块代码，根据模块文件路径
+- __webpack_exports__:模块对外暴露方法
+
 通过以上工具方法，就可以在浏览器run起来；从源代码es6、es7 新特性新写法，都需要转成浏览器可识别的代码；
+
 如:
+
+```javascript
 // es6
 import 
 
 // es5 
 __webpack_require__
+```
 
 webpack通过自定义__webpack_require__、__webpack_exports__ ...,实现多个模块代码打包。
+
 接下来将按照上述逻辑，来构建简易版的webpack，通过以下几个阶段
+
 1. 配置信息
 2. 依赖构建
-3. 生成模版代码
-4. 生成文件
-配置信息
+
+1. 生成模版代码
+2. 生成文件
+
+## 配置信息
+
+```javascript
 class Compiler {
   constructor(config) {
     // 获取配置信息
@@ -81,8 +97,11 @@ class Compiler {
     // 工作路径
     this.root = process.cwd();
   }
-构建依赖
-  
+```
+
+## 构建依赖
+
+```javascript
 getSource(modulePath) {
     const rules = this.config.module.rules;
     let content = fs.readFileSync(modulePath, 'utf8');
@@ -104,14 +123,21 @@ buildModule(modulePath, isEntry) {
       this.buildModule(path.join(this.root, dep), false)
     })
   }
-通过buildModule解析源码，形成模块依赖this.modules[moduleName；
-● 找到模块源码this.getSource(modulePath);
-● 解析源码，转换ast，返回源码和模块依赖路径this.parse(source, path.dirname(moduleName))
-● 生成路径与模块代码对象：this.modules[moduleName] = sourceCode
-● 对模块中有依赖的文件，形成迭代调用this.buildModule(path.join(this.root, dep), false)重新执行以上方法
+```
 
-解析源码
+通过`buildModule`解析源码，形成模块依赖`this.modules[moduleName`；
 
+- 找到模块源码`this.getSource(modulePath);`
+- 解析源码，转换ast，返回源码和模块依赖路径`this.parse(source, path.dirname(moduleName))`
+
+- 生成路径与模块代码对象：`this.modules[moduleName] = sourceCode`
+- 对模块中有依赖的文件，形成迭代调用`this.buildModule(path.join(this.root, dep), false)`重新执行以上方法
+
+
+
+**解析源码**
+
+```javascript
   parse(source, parentPatch) { // AST 解析语法树
     const ast = babylon.parse(source);
     let dependencies = []; // 依赖数组
@@ -134,9 +160,14 @@ buildModule(modulePath, isEntry) {
     }
 
   }
-解析模块源代码，替换require方法成__webpack_require__，同时把文件路径也转换掉
-代码生成模版
-// ejs  模版代码
+```
+
+解析模块源代码，替换require方法成`__webpack_require__`，同时把文件路径也转换掉
+
+## 代码生成模版
+
+```javascript
+// ejs  模版代码
 (() => {
 var __webpack_modules__ = ({
 <%for(let key in modules){%>
@@ -163,8 +194,13 @@ return module.exports;
 var __webpack_exports__ = __webpack_require__("<%-entryId%>");
 })()
 ;
-将把this.modules、this.entryId数据，传入此模版中，生成可执行代码
-生成文件
+```
+
+将把`this.modules`、`this.entryId`数据，传入此模版中，生成可执行代码
+
+## 生成文件
+
+```javascript
   emitFile() {
     const {output} = this.config;
     const main = path.join(output.path, output.filename);
@@ -177,7 +213,11 @@ var __webpack_exports__ = __webpack_require__("<%-entryId%>");
     // 将代码写入output文件夹/文件
     fs.writeFileSync(main, this.assets[main])
   }
-loader
+```
+
+## loader
+
+```
 将引用资源，转换成模块
  getSource(modulePath) {
     const rules = this.config.module.rules;
@@ -199,8 +239,13 @@ loader
     }
     return content;
   }
-根据路径获取源码，判断当前路径是否能匹配上loader文件test.test(modulePath)，
-如果可以匹配，将模块源码传入，loader方法中，再做其他转换 content = loader(content);并且形成递归调用；
+```
+
+根据路径获取源码，判断当前路径是否能匹配上loader文件`test.test(modulePath)`，
+
+如果可以匹配，将模块源码传入，loader方法中，再做其他转换` content = loader(content);`并且形成递归调用；
+
+```javascript
 // 自定义loader
 
 // less-loader
@@ -229,8 +274,11 @@ function loader(source) {
  return style;
 }
 module.exports = loader;
+```
 
 配置文件
+
+```json
 const path = require('path');
 module.exports = {
   mode: 'development',
@@ -251,18 +299,28 @@ module.exports = {
     ]
   },
 }
-plugin
+```
+
+## plugin
+
 从形态上看，插件通常是一个带有 apply 函数的类：
 
+```javascript
 class SomePlugin {
     apply(compiler) {
     }
 }
+```
 
 apply 函数运行时会得到参数 compiler ，以此为起点可以调用 hook 对象注册各种钩子回调，
+
 例如：compiler.hooks.make.tapAsync ，这里面 make 是钩子名称，tapAsync 定义了钩子的调用方式，
+
 webpack 的插件架构基于这种模式构建而成，插件开发者可以使用这种模式在钩子回调中，插入特定代码
+
 配置文件
+
+```javascript
 const path = require('path');
 
 class P {
@@ -288,7 +346,11 @@ module.exports = {
     new P()
   ]
 }
-compiler.js
+```
+
+**compiler.js**
+
+```javascript
 const {SyncHook} = require('tapable');
 class Compiler {
   constructor(config) {
@@ -322,10 +384,15 @@ class Compiler {
     }
     this.hooks.afterPlugins.call();
   }
-plugin 核心就是tapable采用发布/订阅的模式，先搜集/订阅插件中所需要回调，在webpack生命周期中去执行，这样插件就可以在使用的时机，获取想要的上下文，从而进行干预以及其他操作。
+```
+
+plugin 核心就是`tapable`采用发布/订阅的模式，先搜集/订阅插件中所需要回调，在webpack生命周期中去执行，这样插件就可以在使用的时机，获取想要的上下文，从而进行干预以及其他操作。
 
 以上就是各个阶段关键核心代码部分
-完整代码
+
+## 完整代码
+
+```javascript
 const path = require('path');
 const fs = require('fs');
 const babylon = require('babylon');
@@ -455,5 +522,8 @@ class Compiler {
 }
 
 module.exports = Compiler;
+```
+
 github链接：
+
 https://github.com/NoahsDante/webpack-learn-dev
